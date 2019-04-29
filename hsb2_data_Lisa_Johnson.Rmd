@@ -1,0 +1,94 @@
+---
+title: "HSB2 Data Analysis"
+output: html_notebook
+---
+
+**Researchers at the University of South Carolina sought to investigate the relationship between school type and program with the primary question being: is there an interaction between school type and program? The present analysis used dataset provided by Michael Seaman which includes 200 high school students’ race, SES, type of school (public or private), type of program (general, academic, vocational), and standardized reading, writing, math, science, and social studies scores.**
+
+We are first starting out with loading in our data and
+saving *program* and *schooltype* as factors.
+
+```{r}
+
+library(ggplot2)
+dat <- read.csv("hsb2.csv", header = TRUE, sep = ",")
+
+dat$prog <- as.factor(dat$prog)
+dat$schtyp <- as.factor(dat$schtyp)
+
+```
+
+
+Next, lets see some descriptive statistics using the *psych package*
+
+```{r}
+
+dat_stat <- describeBy(dat$math, list(dat$prog, dat$schtyp),
+                       mat = T, digits = 2)
+
+names(dat_stat)[names(dat_stat) == "group1"] = "Program"
+names(dat_stat)[names(dat_stat) == "group2"] = "School Type"
+dat_stat$se <- dat_stat$sd / sqrt(dat_stat$n)
+
+```
+
+**To investigate the interaction between school type and program, a linear regression including the interaction term for school type and program was created. **
+
+
+Now that we have our dataframe and statistics, lets get plotting.
+
+```{r}
+
+limits <- aes(ymax = mean + (1.96 * se), ymin = mean - (1.96 * se))
+pos_dodge <- position_dodge(width = .9)
+
+apatheme <- theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(),
+        text = element_text(family = "Times"))
+
+plot <- ggplot(dat_stat, aes(x = Program, y = mean, fill = `School Type`)) +
+  geom_bar(stat = "identity", position = pos_dodge) +
+  geom_errorbar(limits, position = pos_dodge, width = .25) +
+  apatheme +
+  ylab("Math Score") +
+  scale_fill_grey()
+plot
+
+model <- lm(math ~ prog * schtyp, dat)
+summary(model)
+
+# And for our interaction
+
+library(dplyr)
+dat %>%
+  group_by(prog, schtyp) %>%
+  summarise(math_groups = mean(math)) -> dat2
+
+int <- dat2 %>%
+  ggplot() +
+  aes(x = prog, y = math_groups, color = schtyp) +
+  geom_line(aes(group = schtyp)) +
+  geom_point()
+int <- int + scale_x_discrete(labels = c("General", "Academic", "Vocational")) 
+int <- int +   labs(x = "Program", y = "Math Score", color = "School Type")
+int <- int + scale_color_discrete(labels = c("Public", "Private"))
+
+int
+
+```
+
+##Results
+
+**To investigate the interaction between school type and program, a linear regression including the interaction term for school type and program was created. Results from the linear regression indicate main effects of school type and math score, but, because our p-value is > .27 and our graphed interaction appears to reflect a potential relationship between our measures of interest (program and school type), further investigation is necessary to make a conclusion that will generalize to the entire population. **
+
+
+##Conclusions
+
+**Results show that there is a main effect for both school type and program. When investigating a potential interaction, researchers interpreted the interaction plot to suggest a potential interaction between the two terms and suggest further investigation to be necessary before generalizing results to the entire population of high school students.**
+
+
+
+
